@@ -48,9 +48,13 @@ export const signup = async (req, res) => {
         profilePicture: newUser.profilePicture,
       });
 
-      try{
-          await sendWelcomeEmail(saveUser.email, saveUser.fullName, process.env.CLIENT_URL);
-      }catch(err){
+      try {
+        await sendWelcomeEmail(
+          saveUser.email,
+          saveUser.fullName,
+          process.env.CLIENT_URL,
+        );
+      } catch (err) {
         console.log("Error sending welcome email:", err);
       }
     } else {
@@ -60,4 +64,37 @@ export const signup = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
     console.log(err);
   }
+};
+
+export const login = async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+    generateToken(user._id, res);
+    res.status(200).json({
+      message: "Login successful",
+      _id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      profilePicture: user.profilePicture,
+    });
+  } catch (err) {
+    res.status(500).json({ message: "InternalServer Error" });
+    console.log(err);
+  }
+};
+
+export const logout = (req, res) => {
+  res.cookie("jwtToken", "", { maxAge: 0 });
+  res.status(200).json({ message: "Logout successful" });
 };
